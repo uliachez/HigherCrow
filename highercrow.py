@@ -40,7 +40,7 @@ class Entity:
         self.is_out = False
         self.is_dead = False
         self.jump_speed = -12
-        self.gravity = 0.5
+        self.gravity = 0.4
         self.is_grounded = False
     
     def handle_input(self):
