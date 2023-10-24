@@ -1,12 +1,15 @@
 import pygame
+import random
+
 pygame.init()
 
-W = 800
+W = 550
 H = 600
 screen = pygame.display.set_mode((W, H))
 
 FPS = 60
 clock = pygame.time.Clock()
+
 
 font_path = 'crow_font.ttf'
 font_large = pygame.font.Font(font_path, 48)
@@ -28,7 +31,9 @@ enemy_dead_image =pygame.image.load('vrag_dead.jpg')
 enemy_dead_image = pygame.transform.scale(enemy_dead_image, (80,80))
 
 player_image =pygame.image.load('vorona.png')
-player_image = pygame.transform.scale(player_image, (60,80))
+player_image = pygame.transform.scale(player_image, (80,80))
+
+background_image = pygame.image.load("fon.jpg")
 
 class Entity:
     def __init__(self, image):
@@ -74,6 +79,7 @@ class Entity:
 class Player(Entity):
     def __init__(self):
         super().__init__(player_image)
+        self.respawn()
 
     def handle_input(self):
         self.x_speed = 0
@@ -96,18 +102,52 @@ class Player(Entity):
     def jump(self):
         self.y_speed = self.jump_speed
 
+class Goomba(Entity):
+    def __init__(self):
+        super().__init__(enemy_image)
+        self.spawn()
+    def spawn(self):
+        direction = random.randint(0, 1)
+
+        if direction == 0:
+            self.x_speed = self.speed
+            self.rect.bottomright = (0, 0)
+        else:
+            self.x_speed == self.speed
+            self.rect.bottomleft = (W, 0)
+    def update(self):
+        super().update()
+        if self.x_speed > 0 and self.rect.left > W or self.x_speed < 0 and self.rect.right < 0:
+            self.is_out = True
+
 player = Player()
 score = 0
+
+goombas = []
+INIT_DELAY = 2000
+spawn_delay = INIT_DELAY
+DECREASE_BASE = 1.01
+last_spawn_time = pygame.time.get_ticks()
 
 running = True
 while running:
     for e in pygame.event.get():
         if e.type == pygame.QUIT:
             running = False
+        elif e.type == pygame.KEYDOWN:
+            if player.is_out:
+                score = 0
+                spawn_delay = INIT_DELAY
+                last_spawn_time = pygame.time.get_ticks()
+                player.respawn()
+                goombas.clear()
+
             
     clock.tick(FPS)
     
     screen.fill((178, 34, 34))
+
+    screen.blit(background_image, (0, 0))
 
     screen.blit(ground_image, (0, H - GROUND_H))
 
@@ -121,6 +161,27 @@ while running:
     else:
         player.update()
         player.draw(screen)
+
+        now = pygame.time.get_ticks()
+        elapsed = now - last_spawn_time
+        if elapsed > spawn_delay:
+            last_spawn_time=now
+            goombas.append(Goomba())
+        for goomba in list(goombas):
+            if goomba.is_out:
+                goombas.remove(goomba)
+            else:
+                goomba.update()
+                goomba.draw(screen)
+
+            if not player.is_dead and not goomba.is_dead and player.rect.colliderect(goomba):
+                if player.rect.bottom - player.y_speed < goomba.rect.top:
+                    goomba.kill(enemy_dead_image)
+                    player.jump()
+                    score +=1
+                    spawn_delay = INIT_DELAY / (DECREASE_BASE ** score)
+                else:
+                    player.kill(player_image)
 
         score_rect.midtop = (W//2, 5)
     
